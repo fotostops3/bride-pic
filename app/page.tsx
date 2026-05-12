@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 
 // ── Types ──────────────────────────────────────────────────
 type PhotoLabel = "frente" | "espalda" | "detalle";
@@ -324,19 +324,9 @@ function ProductCard({
 export default function Home() {
   const [gender, setGender]               = useState<"female" | "male">("female");
   const [jobs, setJobs]                   = useState<Job[]>([newJob()]);
-  const [credits, setCredits]             = useState<number | null>(null);
-  const [creditsLoading, setCreditsLoading] = useState(true);
   const [isGenerating, setIsGenerating]   = useState(false);
   const [genProgress, setGenProgress]     = useState<{ current: number; total: number } | null>(null);
   const [lightbox, setLightbox]           = useState<GenImage | null>(null);
-
-  useEffect(() => {
-    fetch("/api/credits")
-      .then(r => r.json())
-      .then(d => { if (typeof d.credits === "number") setCredits(d.credits); })
-      .catch(() => {})
-      .finally(() => setCreditsLoading(false));
-  }, []);
 
   const updateJob = useCallback((id: string, updates: Partial<Job>) => {
     setJobs(prev => prev.map(j => j.id === id ? { ...j, ...updates } : j));
@@ -376,7 +366,6 @@ export default function Home() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Error al generar");
         updateJob(job.id, { status: "done", images: data.images });
-        if (typeof data.creditsRemaining === "number") setCredits(data.creditsRemaining);
       } catch (e) {
         updateJob(job.id, { status: "error", error: e instanceof Error ? e.message : "Error desconocido" });
       }
@@ -406,16 +395,6 @@ export default function Home() {
             <span className="font-bold text-white tracking-tight">BRIDE PIC</span>
             <span className="text-[10px] bg-pink-500/15 text-pink-300 border border-pink-500/25 px-1.5 py-0.5 rounded-full font-medium">BETA</span>
           </div>
-          {!creditsLoading && credits !== null && (
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-sm font-medium transition-all ${
-              credits === 0   ? "border-red-500/30 bg-red-500/10 text-red-400" :
-              credits <= 5   ? "border-amber-500/30 bg-amber-500/10 text-amber-400" :
-              "border-emerald-500/25 bg-emerald-500/[0.08] text-emerald-400"
-            }`}>
-              <span className="text-base leading-none">⚡</span>
-              <span className="text-xs">{credits} crédito{credits !== 1 ? "s" : ""}</span>
-            </div>
-          )}
         </div>
       </header>
 
@@ -466,12 +445,6 @@ export default function Home() {
       {/* ── STICKY GENERATE ── */}
       <div className="fixed bottom-0 left-0 right-0 bg-[#07070f]/95 backdrop-blur-xl border-t border-white/[0.05] p-4 z-40">
         <div className="max-w-4xl mx-auto">
-          {credits !== null && pendingCount > credits && (
-            <p className="text-center text-xs text-amber-400 mb-2">
-              ⚠ Créditos insuficientes — tenés {credits} y necesitás {pendingCount}
-            </p>
-          )}
-
           {/* Barra de progreso */}
           {isGenerating && genProgress && (
             <div className="mb-3">
@@ -495,7 +468,7 @@ export default function Home() {
 
           <button
             onClick={handleGenerateAll}
-            disabled={isGenerating || !pendingCount || (credits !== null && credits === 0)}
+            disabled={isGenerating || !pendingCount}
             className="relative w-full py-4 rounded-2xl font-semibold text-sm transition-all overflow-hidden disabled:opacity-40 disabled:cursor-not-allowed group"
             style={{ background: isGenerating ? "#111128" : "linear-gradient(135deg, #ec4899 0%, #f43f5e 100%)" }}
           >
@@ -511,7 +484,7 @@ export default function Home() {
             ) : pendingCount > 0 ? (
               <span className="flex items-center justify-center gap-2 text-white">
                 <IcoBolt />
-                Generar {pendingCount} producto{pendingCount !== 1 ? "s" : ""} · {pendingCount} crédito{pendingCount !== 1 ? "s" : ""}
+                Generar {pendingCount} producto{pendingCount !== 1 ? "s" : ""}
               </span>
             ) : (
               <span className="text-slate-400">Agregá fotos a al menos un producto</span>

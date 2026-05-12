@@ -6,7 +6,6 @@ import * as path from "path";
 import * as os from "os";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const ACCOUNT_KEY = process.env.ACCOUNT_KEY!;
 
 // ── Garment types ──────────────────────────────────────────
 const GARMENT_LABELS: Record<string, string> = {
@@ -172,12 +171,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Subí al menos una foto de la prenda" }, { status: 400 });
     }
 
-    // Check & deduct credit BEFORE generating
-    const creditResult = await checkAndDeductCredit();
-    if (!creditResult.ok) {
-      return NextResponse.json({ error: creditResult.error }, { status: 402 });
-    }
-
     // Prepare tagged image buffers
     const tagged: { buffer: Buffer; label: string }[] = [];
     for (let i = 0; i < Math.min(fileCount, 4); i++) {
@@ -230,7 +223,7 @@ export async function POST(req: NextRequest) {
       })
     );
 
-    return NextResponse.json({ images: results, creditsRemaining: creditResult.remaining });
+    return NextResponse.json({ images: results });
   } catch (err: unknown) {
     console.error("Error generando imágenes:", err);
     const message = err instanceof Error ? err.message : "Error al generar";
