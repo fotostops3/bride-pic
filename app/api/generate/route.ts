@@ -127,34 +127,6 @@ async function optimizeOutput(base64: string): Promise<string> {
   return `data:image/jpeg;base64,${optimized.toString("base64")}`;
 }
 
-// ── Credits check ──────────────────────────────────────────
-const SUPABASE_ENABLED = !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY && process.env.ACCOUNT_KEY);
-
-async function checkAndDeductCredit(): Promise<{ ok: boolean; error?: string; remaining?: number }> {
-  // Si Supabase no está configurado, saltear el chequeo (modo desarrollo)
-  if (!SUPABASE_ENABLED) return { ok: true, remaining: -1 };
-
-  const { getSupabase } = await import("@/lib/supabase");
-  const supabase = getSupabase();
-
-  const { data, error } = await supabase
-    .from("accounts")
-    .select("credits, total_generated")
-    .eq("account_key", ACCOUNT_KEY)
-    .single();
-
-  if (error || !data) return { ok: false, error: "Cuenta no encontrada" };
-  if (data.credits < 1) return { ok: false, error: "Sin créditos. Contactá a StyleShoot para recargar." };
-
-  const { error: updateError } = await supabase
-    .from("accounts")
-    .update({ credits: data.credits - 1, total_generated: data.total_generated + 1 })
-    .eq("account_key", ACCOUNT_KEY);
-
-  if (updateError) return { ok: false, error: "Error al descontar crédito" };
-  return { ok: true, remaining: data.credits - 1 };
-}
-
 // ── Main POST ──────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "styleshoot-"));
